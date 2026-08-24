@@ -156,24 +156,41 @@ export default function App() {
   function clickTableau(p: number, idx: number) {
     const pile = state.tableau[p]
     const card = pile[idx]
-    if (!card?.faceUp) return
-    if (selected && selected.pile === p && selected.idx === idx) { setSelected(null); return }
+
+    // Try to drop selected cards here first (handles empty piles)
     if (selected) {
       const srcPile = state.tableau[selected.pile]
+      // clicking the selected card again = deselect
+      if (selected.pile === p && selected.idx === idx) {
+        setSelected(null)
+        return
+      }
       const moving = srcPile.slice(selected.idx)
       if (moving.length) {
         const targetTop = pile[pile.length - 1] || null
         if (canStackOnTableau(moving[0], targetTop)) {
           const ns: GameState = structuredClone(state)
-          const src = ns.tableau[selected.pile]; const dst = ns.tableau[p]
-          const block = src.splice(selected.idx); dst.push(...block)
-          flipExposed(ns); ns.moves++
+          const src = ns.tableau[selected.pile]
+          const dst = ns.tableau[p]
+          const block = src.splice(selected.idx)
+          dst.push(...block)
+          flipExposed(ns)
+          ns.moves++
           const final = autoFoundationFlip(ns)
-          setState(final); setSelected(null); checkWin(final); return
+          setState(final)
+          setSelected(null)
+          checkWin(final)
+          return
         }
       }
-      setSelected(null); return
+      setSelected(null)
+      return
     }
+
+    // No selection active – trying to select a card
+    if (!card?.faceUp) return
+
+    // Validate this is a movable sequence
     for (let i = idx; i < pile.length - 1; i++) {
       const a = pile[i], b = pile[i + 1]
       if (cardColor(a.suit) === cardColor(b.suit) || RANK_VALUE[a.rank] !== RANK_VALUE[b.rank] + 1) return
