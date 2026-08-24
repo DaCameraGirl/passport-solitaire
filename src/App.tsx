@@ -91,6 +91,8 @@ function WinStamp({ dest, onClose, timeMs, moves }: {
   </div>
 }
 
+type Selected = { source: 'tableau', pile: number, idx: number } | { source: 'waste' }
+
 export default function App() {
   const [miles, setMiles] = useState(getMiles())
   const [stamps, setStamps] = useState(getStamps())
@@ -99,7 +101,7 @@ export default function App() {
   const dest = DESTINATIONS.find(d => d.id === destId)!
 
   const [state, setState] = useState<GameState>(() => dealNewGame(destId))
-  const [selected, setSelected] = useState<{ pile: number, idx: number } | null>(null)
+  const [selected, setSelected] = useState<Selected | null>(null)
   const [passportOpen, setPassportOpen] = useState(false)
   const [won, setWon] = useState(false)
   const gameStart = useRef(Date.now())
@@ -159,12 +161,32 @@ export default function App() {
 
     // Try to drop selected cards here first (handles empty piles)
     if (selected) {
-      const srcPile = state.tableau[selected.pile]
+      if (selected.source === 'waste') {
+        const wasteCard = state.waste[state.waste.length - 1]
+        if (!wasteCard) { setSelected(null); return }
+        const targetTop = pile[pile.length - 1] || null
+        if (canStackOnTableau(wasteCard, targetTop)) {
+          const ns: GameState = structuredClone(state)
+          const c = ns.waste.pop()!
+          ns.tableau[p].push(c)
+          ns.moves++
+          const final = autoFoundationFlip(ns)
+          setState(final)
+          setSelected(null)
+          checkWin(final)
+          return
+        }
+        setSelected(null)
+        return
+      }
+
+      // selected.source === 'tableau'
       // clicking the selected card again = deselect
       if (selected.pile === p && selected.idx === idx) {
         setSelected(null)
         return
       }
+      const srcPile = state.tableau[selected.pile]
       const moving = srcPile.slice(selected.idx)
       if (moving.length) {
         const targetTop = pile[pile.length - 1] || null
@@ -195,11 +217,28 @@ export default function App() {
       const a = pile[i], b = pile[i + 1]
       if (cardColor(a.suit) === cardColor(b.suit) || RANK_VALUE[a.rank] !== RANK_VALUE[b.rank] + 1) return
     }
-    setSelected({ pile: p, idx })
+    setSelected({ source: 'tableau', pile: p, idx })
   }
 
   function clickFoundation(suit: Suit) {
     if (!selected) return
+
+    if (selected.source === 'waste') {
+      const wasteCard = state.waste[state.waste.length - 1]
+      if (!wasteCard || wasteCard.suit !== suit) { setSelected(null); return }
+      if (!canStackOnFoundation(wasteCard, state.foundations[suit])) { setSelected(null); return }
+      const ns: GameState = structuredClone(state)
+      const c = ns.waste.pop()!
+      ns.foundations[suit].push(c)
+      ns.moves++
+      const final = autoFoundationFlip(ns)
+      setState(final)
+      setSelected(null)
+      checkWin(final)
+      return
+    }
+
+    // tableau -> foundation
     const srcPile = state.tableau[selected.pile]
     const moving = srcPile.slice(selected.idx)
     if (moving.length !== 1) { setSelected(null); return }
@@ -222,6 +261,7 @@ export default function App() {
       ns.waste = []; ns.moves++
       setState(ns); return
     }
+    setSelected(null)
     const ns = structuredClone(state)
     const card = ns.stock.pop()!
     card.faceUp = true; ns.waste.push(card); ns.moves++
@@ -231,13 +271,25 @@ export default function App() {
   function clickWaste() {
     if (state.waste.length === 0) return
     const card = state.waste[state.waste.length - 1]
+
+    // if waste card is already selected, clicking again deselects
+    if (selected?.source === 'waste') {
+      setSelected(null)
+      return
+    }
+
+    // auto-send to foundation if possible
     if (canStackOnFoundation(card, state.foundations[card.suit])) {
       const ns = structuredClone(state)
       const c = ns.waste.pop()!
       ns.foundations[c.suit].push(c); ns.moves++
       const final = autoFoundationFlip(ns)
       setState(final); checkWin(final)
+      return
     }
+
+    // otherwise select the waste card so it can be played to tableau
+    setSelected({ source: 'waste' })
   }
 
   function checkWin(s: GameState) {
@@ -306,7 +358,7 @@ export default function App() {
             <span className="count-badge">{state.stock.length}</span>
           </div>
           <div className="waste-area" onClick={clickWaste}>
-            {state.waste.length ? <CardView card={state.waste[state.waste.length-1]} dest={dest} /> : <div className="card-slot" />}
+            {state.waste.length ? <CardView card={state.waste[state.waste.length-1]} dest={dest} selected={selected?.source === 'waste'} /> : <div className="card-slot" />}
           </div>
         </div>
       </div>
@@ -318,7 +370,7 @@ export default function App() {
               ? <div className="card-slot" onClick={() => clickTableau(p, 0)} />
               : pile.map((card, i) => (
                 <div key={card.id} style={{ marginTop: i === 0 ? 0 : card.faceUp ? -18 : -52 }} onClick={e => { e.stopPropagation(); clickTableau(p, i) }}>
-                  <CardView card={card} dest={dest} selected={selected?.pile === p && selected.idx <= i} />
+                  <CardView card={card} dest={dest} selected={selected?.source === 'tableau' && selected.pile === p && selected.idx <= i} />
                 </div>
               ))
             }
