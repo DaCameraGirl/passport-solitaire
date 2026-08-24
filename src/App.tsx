@@ -101,6 +101,7 @@ export default function App() {
   const dest = DESTINATIONS.find(d => d.id === destId)!
 
   const [state, setState] = useState<GameState>(() => dealNewGame(destId))
+  const [history, setHistory] = useState<GameState[]>([])
   const [selected, setSelected] = useState<Selected | null>(null)
   const [passportOpen, setPassportOpen] = useState(false)
   const [won, setWon] = useState(false)
@@ -110,6 +111,7 @@ export default function App() {
   useEffect(() => {
     setState(dealNewGame(destId))
     setSelected(null)
+    setHistory([])
     setWon(false)
     gameStart.current = Date.now()
     setElapsedMs(0)
@@ -121,9 +123,26 @@ export default function App() {
     return () => clearInterval(id)
   }, [won, destId])
 
+  function pushHistory(s: GameState) {
+    setHistory(h => [...h.slice(-49), structuredClone(s)])
+  }
+
+  function undo() {
+    setHistory(h => {
+      if (h.length === 0) return h
+      const prev = h[h.length - 1]
+      setState(prev)
+      setSelected(null)
+      setWon(false)
+      return h.slice(0, -1)
+    })
+  }
+
   function newDeal() {
     setState(dealNewGame(destId))
+    setHistory([])
     setWon(false)
+    setSelected(null)
     gameStart.current = Date.now()
     setElapsedMs(0)
   }
@@ -166,6 +185,7 @@ export default function App() {
         if (!wasteCard) { setSelected(null); return }
         const targetTop = pile[pile.length - 1] || null
         if (canStackOnTableau(wasteCard, targetTop)) {
+          pushHistory(state)
           const ns: GameState = structuredClone(state)
           const c = ns.waste.pop()!
           ns.tableau[p].push(c)
@@ -191,6 +211,7 @@ export default function App() {
       if (moving.length) {
         const targetTop = pile[pile.length - 1] || null
         if (canStackOnTableau(moving[0], targetTop)) {
+          pushHistory(state)
           const ns: GameState = structuredClone(state)
           const src = ns.tableau[selected.pile]
           const dst = ns.tableau[p]
@@ -227,6 +248,7 @@ export default function App() {
       const wasteCard = state.waste[state.waste.length - 1]
       if (!wasteCard || wasteCard.suit !== suit) { setSelected(null); return }
       if (!canStackOnFoundation(wasteCard, state.foundations[suit])) { setSelected(null); return }
+      pushHistory(state)
       const ns: GameState = structuredClone(state)
       const c = ns.waste.pop()!
       ns.foundations[suit].push(c)
@@ -245,6 +267,7 @@ export default function App() {
     const card = moving[0]
     if (card.suit !== suit) { setSelected(null); return }
     if (!canStackOnFoundation(card, state.foundations[suit])) { setSelected(null); return }
+    pushHistory(state)
     const ns: GameState = structuredClone(state)
     ns.tableau[selected.pile].pop()
     ns.foundations[suit].push(card)
@@ -256,11 +279,13 @@ export default function App() {
   function drawStock() {
     if (state.stock.length === 0) {
       if (state.waste.length === 0) return
+      pushHistory(state)
       const ns = structuredClone(state)
       ns.stock = ns.waste.reverse().map(c => ({ ...c, faceUp: false }))
       ns.waste = []; ns.moves++
       setState(ns); return
     }
+    pushHistory(state)
     setSelected(null)
     const ns = structuredClone(state)
     const card = ns.stock.pop()!
@@ -280,6 +305,7 @@ export default function App() {
 
     // auto-send to foundation if possible
     if (canStackOnFoundation(card, state.foundations[card.suit])) {
+      pushHistory(state)
       const ns = structuredClone(state)
       const c = ns.waste.pop()!
       ns.foundations[c.suit].push(c); ns.moves++
@@ -299,6 +325,7 @@ export default function App() {
       addMiles(250)
       setStamps(getStamps()); setMiles(getMiles())
       setWon(true); setElapsedMs(elapsed)
+      setHistory([]) // clear undo after win
       try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
         const o = ctx.createOscillator(); const g = ctx.createGain()
@@ -343,15 +370,6 @@ export default function App() {
       </div>
 
       <div className="top-row">
-        <div className="foundations">
-          {(Object.keys(state.foundations) as Suit[]).map(s => {
-            const pile = state.foundations[s]
-            const top = pile[pile.length - 1] || null
-            return <div key={s} className="foundation-slot" onClick={() => clickFoundation(s)}>
-              {top ? <CardView card={top} dest={dest} /> : <div className="foundation-empty">{SUIT_SYM[s]}</div>}
-            </div>
-          })}
-        </div>
         <div className="stock-waste">
           <div className="stock-area" onClick={drawStock}>
             {state.stock.length ? <div className={`card back pattern-${dest.pattern}`} style={{'--p': dest.primary, '--s': dest.secondary} as any}><span className="back-emoji">{dest.emoji}</span></div> : <div className="card-slot">↻</div>}
@@ -360,6 +378,15 @@ export default function App() {
           <div className="waste-area" onClick={clickWaste}>
             {state.waste.length ? <CardView card={state.waste[state.waste.length-1]} dest={dest} selected={selected?.source === 'waste'} /> : <div className="card-slot" />}
           </div>
+        </div>
+        <div className="foundations">
+          {(Object.keys(state.foundations) as Suit[]).map(s => {
+            const pile = state.foundations[s]
+            const top = pile[pile.length - 1] || null
+            return <div key={s} className="foundation-slot" onClick={() => clickFoundation(s)}>
+              {top ? <CardView card={top} dest={dest} /> : <div className="foundation-empty">{SUIT_SYM[s]}</div>}
+            </div>
+          })}
         </div>
       </div>
 
@@ -379,6 +406,7 @@ export default function App() {
       </div>
 
       <div className="footer-bar">
+        <button className="btn-ghost" onClick={undo} disabled={history.length === 0} style={{opacity: history.length === 0 ? 0.5 : 1}}>↶ Undo</button>
         <button className="btn-ghost" onClick={newDeal}>New Deal</button>
         <span className="footer-hint">Click a card to select, then click where to move • Cards auto-send to foundations</span>
       </div>
