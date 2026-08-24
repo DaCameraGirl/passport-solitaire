@@ -147,31 +147,38 @@ export default function App() {
     setElapsedMs(0)
   }
 
-  function autoFoundationFlip(s: GameState) {
-    let changed: boolean
-    const ns = structuredClone(s) as GameState
-    do {
-      changed = false
-      for (let p = 0; p < 7; p++) {
-        const pile = ns.tableau[p]
-        if (pile.length === 0) continue
-        const card = pile[pile.length - 1]
-        if (!card.faceUp) continue
-        if (canStackOnFoundation(card, ns.foundations[card.suit])) {
-          ns.foundations[card.suit].push(pile.pop()!)
-          changed = true
-        }
-      }
-    } while (changed)
-    return ns
-  }
-
   function flipExposed(s: GameState) {
     for (const pile of s.tableau) {
       if (pile.length && !pile[pile.length - 1].faceUp) {
         pile[pile.length - 1].faceUp = true
       }
     }
+  }
+
+  function autoFoundationFlip(s: GameState) {
+    let changed: boolean
+    do {
+      changed = false
+      for (let p = 0; p < 7; p++) {
+        const pile = s.tableau[p]
+        if (pile.length === 0) continue
+        const card = pile[pile.length - 1]
+        if (!card.faceUp) continue
+        if (canStackOnFoundation(card, s.foundations[card.suit])) {
+          s.foundations[card.suit].push(pile.pop()!)
+          changed = true
+        }
+      }
+      if (changed) flipExposed(s)
+    } while (changed)
+    return s
+  }
+
+  function finalizeMove(s: GameState) {
+    flipExposed(s)
+    autoFoundationFlip(s)
+    flipExposed(s)
+    return s
   }
 
   function clickTableau(p: number, idx: number) {
@@ -190,7 +197,7 @@ export default function App() {
           const c = ns.waste.pop()!
           ns.tableau[p].push(c)
           ns.moves++
-          const final = autoFoundationFlip(ns)
+          const final = finalizeMove(ns)
           setState(final)
           setSelected(null)
           checkWin(final)
@@ -217,9 +224,8 @@ export default function App() {
           const dst = ns.tableau[p]
           const block = src.splice(selected.idx)
           dst.push(...block)
-          flipExposed(ns)
           ns.moves++
-          const final = autoFoundationFlip(ns)
+          const final = finalizeMove(ns)
           setState(final)
           setSelected(null)
           checkWin(final)
@@ -253,7 +259,7 @@ export default function App() {
       const c = ns.waste.pop()!
       ns.foundations[suit].push(c)
       ns.moves++
-      const final = autoFoundationFlip(ns)
+      const final = finalizeMove(ns)
       setState(final)
       setSelected(null)
       checkWin(final)
@@ -269,10 +275,10 @@ export default function App() {
     if (!canStackOnFoundation(card, state.foundations[suit])) { setSelected(null); return }
     pushHistory(state)
     const ns: GameState = structuredClone(state)
-    ns.tableau[selected.pile].pop()
+    ns.tableau[selected.pile].pop()!
     ns.foundations[suit].push(card)
-    flipExposed(ns); ns.moves++
-    const final = autoFoundationFlip(ns)
+    ns.moves++
+    const final = finalizeMove(ns)
     setState(final); setSelected(null); checkWin(final)
   }
 
@@ -309,7 +315,7 @@ export default function App() {
       const ns = structuredClone(state)
       const c = ns.waste.pop()!
       ns.foundations[c.suit].push(c); ns.moves++
-      const final = autoFoundationFlip(ns)
+      const final = finalizeMove(ns)
       setState(final); checkWin(final)
       return
     }
