@@ -342,8 +342,18 @@ export default function App() {
 
   const destOptions = DESTINATIONS.map(d => ({ ...d, unlocked: miles >= d.milesRequired }))
 
+  // Paris Eiffel Tower background
+  useEffect(() => {
+    if (destId === 'paris') {
+      document.body.classList.add('paris-bg')
+    } else {
+      document.body.classList.remove('paris-bg')
+    }
+    return () => { document.body.classList.remove('paris-bg') }
+  }, [destId])
+
   return (
-    <div className="wrap" style={{'--dest-primary': dest.primary, '--dest-secondary': dest.secondary, '--dest-accent': dest.accent} as any}>
+    <div className={`wrap dest-${destId}`} style={{'--dest-primary': dest.primary, '--dest-secondary': dest.secondary, '--dest-accent': dest.accent} as any}>
       <header className="boarding-pass">
         <div className="bp-left">
           <div className="bp-brand">PASSPORT SOLITAIRE</div>
@@ -391,18 +401,23 @@ export default function App() {
       </div>
 
       <div className="tableau">
-        {state.tableau.map((pile, p) => (
+        {state.tableau.map((pile, p) => {
+          const n = pile.length
+          // compress long piles so the board doesn't jump
+          const gapUp = n > 16 ? 10 : n > 12 ? 13 : n > 8 ? 16 : 18
+          const gapDown = n > 16 ? 18 : n > 12 ? 24 : n > 8 ? 32 : 44
+          return (
           <div key={p} className="tableau-pile" onClick={() => { if (pile.length === 0 && selected) clickTableau(p, 0) }}>
             {pile.length === 0
               ? <div className="card-slot" onClick={() => clickTableau(p, 0)} />
               : pile.map((card, i) => (
-                <div key={card.id} style={{ marginTop: i === 0 ? 0 : card.faceUp ? -18 : -52 }} onClick={e => { e.stopPropagation(); clickTableau(p, i) }}>
+                <div key={card.id} style={{ marginTop: i === 0 ? 0 : card.faceUp ? -gapUp : -gapDown }} onClick={e => { e.stopPropagation(); clickTableau(p, i) }}>
                   <CardView card={card} dest={dest} selected={selected?.source === 'tableau' && selected.pile === p && selected.idx <= i} />
                 </div>
               ))
             }
           </div>
-        ))}
+        )})}
       </div>
 
       <div className="footer-bar">
