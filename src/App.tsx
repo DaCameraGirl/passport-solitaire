@@ -7,6 +7,13 @@ import './App.css'
 
 const SUIT_SYM: Record<Suit, string> = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' }
 
+function formatTime(ms: number) {
+  const sec = Math.floor(ms / 1000)
+  const mm = String(Math.floor(sec / 60)).padStart(2, '0')
+  const ss = String(sec % 60).padStart(2, '0')
+  return `${mm}:${ss}`
+}
+
 function CardView({ card, dest, onClick, selected }: {
   card: Card | null
   dest: Destination
@@ -71,9 +78,6 @@ function PassportBook({ open, onClose, stamps, miles }: {
 function WinStamp({ dest, onClose, timeMs, moves }: {
   dest: Destination, onClose: () => void, timeMs: number, moves: number
 }) {
-  const sec = Math.round(timeMs / 1000)
-  const mm = String(Math.floor(sec / 60)).padStart(2, '0')
-  const ss = String(sec % 60).padStart(2, '0')
   return <div className="win-overlay" onClick={onClose}>
     <div className="win-card" onClick={e => e.stopPropagation()}>
       <div className="win-stamp-ring" style={{borderColor: dest.primary}}>
@@ -81,7 +85,7 @@ function WinStamp({ dest, onClose, timeMs, moves }: {
       </div>
       <h2>Destination stamped!</h2>
       <p className="win-city">{dest.city}, {dest.country}</p>
-      <p className="win-meta">{mm}:{ss} • {moves} moves • +250 miles</p>
+      <p className="win-meta">{formatTime(timeMs)} • {moves} moves • +250 miles</p>
       <button className="btn-primary" onClick={onClose}>Continue ✈️</button>
     </div>
   </div>
@@ -99,13 +103,28 @@ export default function App() {
   const [passportOpen, setPassportOpen] = useState(false)
   const [won, setWon] = useState(false)
   const gameStart = useRef(Date.now())
+  const [elapsedMs, setElapsedMs] = useState(0)
 
   useEffect(() => {
     setState(dealNewGame(destId))
     setSelected(null)
     setWon(false)
     gameStart.current = Date.now()
+    setElapsedMs(0)
   }, [destId])
+
+  useEffect(() => {
+    if (won) return
+    const id = setInterval(() => setElapsedMs(Date.now() - gameStart.current), 250)
+    return () => clearInterval(id)
+  }, [won, destId])
+
+  function newDeal() {
+    setState(dealNewGame(destId))
+    setWon(false)
+    gameStart.current = Date.now()
+    setElapsedMs(0)
+  }
 
   function autoFoundationFlip(s: GameState) {
     let changed: boolean
@@ -138,12 +157,7 @@ export default function App() {
     const pile = state.tableau[p]
     const card = pile[idx]
     if (!card?.faceUp) return
-
-    if (selected && selected.pile === p && selected.idx === idx) {
-      setSelected(null); return
-    }
-
-    // trying to move selected cards here?
+    if (selected && selected.pile === p && selected.idx === idx) { setSelected(null); return }
     if (selected) {
       const srcPile = state.tableau[selected.pile]
       const moving = srcPile.slice(selected.idx)
@@ -151,24 +165,15 @@ export default function App() {
         const targetTop = pile[pile.length - 1] || null
         if (canStackOnTableau(moving[0], targetTop)) {
           const ns: GameState = structuredClone(state)
-          const src = ns.tableau[selected.pile]
-          const dst = ns.tableau[p]
-          const block = src.splice(selected.idx)
-          dst.push(...block)
-          flipExposed(ns)
-          ns.moves++
+          const src = ns.tableau[selected.pile]; const dst = ns.tableau[p]
+          const block = src.splice(selected.idx); dst.push(...block)
+          flipExposed(ns); ns.moves++
           const final = autoFoundationFlip(ns)
-          setState(final)
-          setSelected(null)
-          checkWin(final)
-          return
+          setState(final); setSelected(null); checkWin(final); return
         }
       }
-      setSelected(null)
-      return
+      setSelected(null); return
     }
-
-    // validate this is a movable sequence
     for (let i = idx; i < pile.length - 1; i++) {
       const a = pile[i], b = pile[i + 1]
       if (cardColor(a.suit) === cardColor(b.suit) || RANK_VALUE[a.rank] !== RANK_VALUE[b.rank] + 1) return
@@ -187,12 +192,9 @@ export default function App() {
     const ns: GameState = structuredClone(state)
     ns.tableau[selected.pile].pop()
     ns.foundations[suit].push(card)
-    flipExposed(ns)
-    ns.moves++
+    flipExposed(ns); ns.moves++
     const final = autoFoundationFlip(ns)
-    setState(final)
-    setSelected(null)
-    checkWin(final)
+    setState(final); setSelected(null); checkWin(final)
   }
 
   function drawStock() {
@@ -200,16 +202,12 @@ export default function App() {
       if (state.waste.length === 0) return
       const ns = structuredClone(state)
       ns.stock = ns.waste.reverse().map(c => ({ ...c, faceUp: false }))
-      ns.waste = []
-      ns.moves++
-      setState(ns)
-      return
+      ns.waste = []; ns.moves++
+      setState(ns); return
     }
     const ns = structuredClone(state)
     const card = ns.stock.pop()!
-    card.faceUp = true
-    ns.waste.push(card)
-    ns.moves++
+    card.faceUp = true; ns.waste.push(card); ns.moves++
     setState(ns)
   }
 
@@ -219,11 +217,9 @@ export default function App() {
     if (canStackOnFoundation(card, state.foundations[card.suit])) {
       const ns = structuredClone(state)
       const c = ns.waste.pop()!
-      ns.foundations[c.suit].push(c)
-      ns.moves++
+      ns.foundations[c.suit].push(c); ns.moves++
       const final = autoFoundationFlip(ns)
-      setState(final)
-      checkWin(final)
+      setState(final); checkWin(final)
     }
   }
 
@@ -232,14 +228,11 @@ export default function App() {
       const elapsed = Date.now() - gameStart.current
       addStamp(dest.id, elapsed)
       addMiles(250)
-      setStamps(getStamps())
-      setMiles(getMiles())
-      setWon(true)
-      // thunk!
+      setStamps(getStamps()); setMiles(getMiles())
+      setWon(true); setElapsedMs(elapsed)
       try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-        const o = ctx.createOscillator()
-        const g = ctx.createGain()
+        const o = ctx.createOscillator(); const g = ctx.createGain()
         o.connect(g); g.connect(ctx.destination)
         o.frequency.setValueAtTime(180, ctx.currentTime)
         o.frequency.exponentialRampToValueAtTime(70, ctx.currentTime + 0.12)
@@ -251,10 +244,7 @@ export default function App() {
     }
   }
 
-  const destOptions = DESTINATIONS.map(d => {
-    const isU = miles >= d.milesRequired
-    return { ...d, unlocked: isU }
-  })
+  const destOptions = DESTINATIONS.map(d => ({ ...d, unlocked: miles >= d.milesRequired }))
 
   return (
     <div className="wrap" style={{'--dest-primary': dest.primary, '--dest-secondary': dest.secondary, '--dest-accent': dest.accent} as any}>
@@ -264,8 +254,9 @@ export default function App() {
           <div className="bp-route">{dest.city} → VICTORY</div>
         </div>
         <div className="bp-mid">
-          <span>FLT  {state.moves}</span>
-          <span>MI  {miles.toLocaleString()}</span>
+          <span>⏱ {formatTime(elapsedMs)}</span>
+          <span>FLT {state.moves}</span>
+          <span>MI {miles.toLocaleString()}</span>
         </div>
         <div className="bp-right">
           <button className="passport-btn" onClick={() => setPassportOpen(true)}>🛂 Passport</button>
@@ -274,13 +265,8 @@ export default function App() {
 
       <div className="dest-picker">
         {destOptions.map(d => (
-          <button
-            key={d.id}
-            className={`dest-chip ${d.id === destId ? 'active' : ''} ${!d.unlocked ? 'locked' : ''}`}
-            onClick={() => d.unlocked && setDestId(d.id)}
-            disabled={!d.unlocked}
-            style={{borderColor: d.primary}}
-          >
+          <button key={d.id} className={`dest-chip ${d.id === destId ? 'active' : ''} ${!d.unlocked ? 'locked' : ''}`}
+            onClick={() => d.unlocked && setDestId(d.id)} disabled={!d.unlocked} style={{borderColor: d.primary}}>
             <span>{d.emoji}</span> {d.city}
             {!d.unlocked && <small> {d.milesRequired}mi</small>}
           </button>
@@ -324,12 +310,12 @@ export default function App() {
       </div>
 
       <div className="footer-bar">
-        <button className="btn-ghost" onClick={() => { setState(dealNewGame(destId)); setWon(false); gameStart.current = Date.now() }}>New Deal</button>
+        <button className="btn-ghost" onClick={newDeal}>New Deal</button>
         <span className="footer-hint">Click a card to select, then click where to move • Cards auto-send to foundations</span>
       </div>
 
       <PassportBook open={passportOpen} onClose={() => setPassportOpen(false)} stamps={stamps} miles={miles} />
-      {won && <WinStamp dest={dest} onClose={() => setWon(false)} timeMs={Date.now() - gameStart.current} moves={state.moves} />}
+      {won && <WinStamp dest={dest} onClose={() => setWon(false)} timeMs={elapsedMs} moves={state.moves} />}
     </div>
   )
 }
