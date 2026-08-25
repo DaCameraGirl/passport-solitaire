@@ -1,12 +1,28 @@
 # 🛂 Passport Solitaire
 
-Travel-themed Klondike solitaire. Each win earns a passport stamp and 250 flight miles toward unlocking new destinations.
+<p align="center">
+  <img src="https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB" />
+  <img src="https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white" />
+</p>
 
-**Play it live:** https://dacameragirl.github.io/passport-solitaire/
+<p align="center">
+  <b>Travel-themed Klondike solitaire — win hands, collect stamps, unlock the world.</b>
+  <br/>
+  <a href="https://dacameragirl.github.io/passport-solitaire/"><b>▶ Play it live</b></a>
+</p>
 
 ---
 
-## How to Play
+<p align="center">
+  <img src="./src/assets/hero.png" alt="Passport Solitaire" width="760" />
+</p>
+
+Each win earns a passport stamp and 250 flight miles toward unlocking new destinations. Six cities, six unique deck skins — Tokyo, Paris, Marrakech, Rio, Reykjavik, Bangkok.
+
+---
+
+## 🎮 How to Play
 
 Passport Solitaire follows classic Klondike / Draw-Three rules with a travel twist.
 
@@ -37,7 +53,7 @@ Fill all four foundations (A→K of each suit). You get:
 
 ---
 
-## Destinations
+## 🌍 Destinations
 
 Each destination has its own color palette, card-back pattern, emoji, and full-screen background photo.
 
@@ -54,7 +70,7 @@ Switch destinations any time from the chip row below the boarding pass header. L
 
 ---
 
-## Animations & Polish
+## ✨ Animations & Polish
 
 - 🎴 **Hover lift** — cards nudge up `translateY(-2px)` on hover with a smooth `.08s` transition
 - 🛂 **Stamp pop** — win screen animates in with a `stamp-pop` keyframe: scales from 60% with a `-8°` rotation snap, `.38s cubic-bezier(.34,1.56,.64,1)`
@@ -65,9 +81,11 @@ Switch destinations any time from the chip row below the boarding pass header. L
 - 🎯 **Selected card outline** — selected cards get a 3px outline in the destination's primary color
 - 🌊 **6 unique card-back patterns** — waves, tiles, grid, dots, stripes, and hex, each tinted in the destination's colorway
 
+> 🎬 Gameplay GIFs coming soon — win stamp animation, destination switching, card moves.
+
 ---
 
-## Features
+## 📋 Features
 
 - ✅ Passport booklet with earned stamps + locked silhouettes
 - ✅ City-themed deck skins with unique patterns & color palettes
@@ -86,7 +104,7 @@ Switch destinations any time from the chip row below the boarding pass header. L
 
 ---
 
-## Play Locally
+## 🚀 Play Locally
 
 ```powershell
 npm install
@@ -101,4 +119,8 @@ npm run build
 
 ---
 
-Built with **Vite + React + TypeScript**.
+<p align="center">
+  Built with <b>Vite + React + TypeScript</b>
+  <br/>
+  🛂 ✈️ 🗺️
+</p>
