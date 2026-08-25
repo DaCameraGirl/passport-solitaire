@@ -20,6 +20,7 @@ export interface Destination {
   milesRequired: number
   unlocked: boolean
   stampsEarned: number
+  bg?: string
 }
 
 export interface PassportStamp {
