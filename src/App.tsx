@@ -93,12 +93,28 @@ function WinStamp({ dest, onClose, timeMs, moves }: {
 
 type Selected = { source: 'tableau', pile: number, idx: number } | { source: 'waste' }
 
+const LS_DRAW = 'ps_drawCount'
+function getDrawCount(): 1 | 3 {
+  const v = parseInt(localStorage.getItem(LS_DRAW) || '1', 10)
+  return v === 3 ? 3 : 1
+}
+
+type DrawCount = 1 | 3
+
+const LS_AUTO = 'ps_autoFoundation'
+function getAutoFoundation(): boolean {
+  const v = localStorage.getItem(LS_AUTO)
+  return v === null ? true : v === '1'
+}
+
 export default function App() {
   const [miles, setMiles] = useState(getMiles())
   const [stamps, setStamps] = useState(getStamps())
   const unlocked = DESTINATIONS.filter(d => d.milesRequired <= miles)
   const [destId, setDestId] = useState(unlocked[0]?.id || 'tokyo')
   const dest = DESTINATIONS.find(d => d.id === destId)!
+  const [drawCount, setDrawCount] = useState<DrawCount>(getDrawCount())
+  const [autoFoundation, setAutoFoundation] = useState(getAutoFoundation())
 
   const [state, setState] = useState<GameState>(() => dealNewGame(destId))
   const [history, setHistory] = useState<GameState[]>([])
@@ -176,7 +192,7 @@ export default function App() {
 
   function finalizeMove(s: GameState) {
     flipExposed(s)
-    autoFoundationFlip(s)
+    if (autoFoundation) autoFoundationFlip(s)
     flipExposed(s)
     return s
   }
@@ -294,8 +310,11 @@ export default function App() {
     pushHistory(state)
     setSelected(null)
     const ns = structuredClone(state)
-    const card = ns.stock.pop()!
-    card.faceUp = true; ns.waste.push(card); ns.moves++
+    for (let i = 0; i < drawCount && ns.stock.length > 0; i++) {
+      const card = ns.stock.pop()!
+      card.faceUp = true; ns.waste.push(card)
+    }
+    ns.moves++
     setState(ns)
   }
 
@@ -348,14 +367,17 @@ export default function App() {
 
   const destOptions = DESTINATIONS.map(d => ({ ...d, unlocked: miles >= d.milesRequired }))
 
-  // Paris Eiffel Tower background
+  // destination background
   useEffect(() => {
-    if (destId === 'paris') {
-      document.body.classList.add('paris-bg')
+    if ((dest as any).bg) {
+      document.body.style.backgroundImage = `linear-gradient(rgba(232,227,214,0.88), rgba(232,227,214,0.88)), url(${(dest as any).bg})`
+      document.body.style.backgroundSize = 'cover'
+      document.body.style.backgroundPosition = 'center'
+      document.body.style.backgroundAttachment = 'fixed'
     } else {
-      document.body.classList.remove('paris-bg')
+      document.body.style.backgroundImage = ''
     }
-    return () => { document.body.classList.remove('paris-bg') }
+    return () => { document.body.style.backgroundImage = '' }
   }, [destId])
 
   return (
@@ -391,8 +413,16 @@ export default function App() {
             {state.stock.length ? <div className={`card back pattern-${dest.pattern}`} style={{'--p': dest.primary, '--s': dest.secondary} as any}><span className="back-emoji">{dest.emoji}</span></div> : <div className="card-slot">↻</div>}
             <span className="count-badge">{state.stock.length}</span>
           </div>
-          <div className="waste-area" onClick={clickWaste}>
-            {state.waste.length ? <CardView card={state.waste[state.waste.length-1]} dest={dest} selected={selected?.source === 'waste'} /> : <div className="card-slot" />}
+          <div className="waste-area" onClick={clickWaste} style={drawCount === 3 ? { minWidth: 160, position: 'relative' } : undefined}>
+            {state.waste.length === 0 ? <div className="card-slot" /> : drawCount === 1 ? (
+              <CardView card={state.waste[state.waste.length-1]} dest={dest} selected={selected?.source === 'waste'} />
+            ) : (
+              state.waste.slice(Math.max(0, state.waste.length - 3)).map((card, i, arr) => (
+                <div key={card.id} style={{ position: 'absolute', left: i * 28, zIndex: i, pointerEvents: i === arr.length - 1 ? 'auto' : 'none' }}>
+                  <CardView card={card} dest={dest} selected={selected?.source === 'waste' && i === arr.length - 1} />
+                </div>
+              ))
+            )}
           </div>
         </div>
         <div className="foundations">
@@ -409,9 +439,9 @@ export default function App() {
       <div className="tableau">
         {state.tableau.map((pile, p) => {
           const n = pile.length
-          // compress long piles so the board doesn't jump
-          const gapUp = n > 16 ? 10 : n > 12 ? 13 : n > 8 ? 16 : 18
-          const gapDown = n > 16 ? 18 : n > 12 ? 24 : n > 8 ? 32 : 44
+          // compress long piles so the board doesn't jump / overflow
+          const gapUp = n > 20 ? 8 : n > 16 ? 10 : n > 12 ? 13 : n > 8 ? 16 : 20
+          const gapDown = n > 20 ? 14 : n > 16 ? 18 : n > 12 ? 24 : n > 8 ? 32 : 44
           return (
           <div key={p} className="tableau-pile" onClick={() => { if (pile.length === 0 && selected) clickTableau(p, 0) }}>
             {pile.length === 0
@@ -429,7 +459,21 @@ export default function App() {
       <div className="footer-bar">
         <button className="btn-ghost" onClick={undo} disabled={history.length === 0} style={{opacity: history.length === 0 ? 0.5 : 1}}>↶ Undo</button>
         <button className="btn-ghost" onClick={newDeal}>New Deal</button>
-        <span className="footer-hint">Click a card to select, then click where to move • Cards auto-send to foundations</span>
+        <button className="btn-ghost" onClick={() => {
+          const next: DrawCount = drawCount === 1 ? 3 : 1
+          setDrawCount(next)
+          localStorage.setItem(LS_DRAW, String(next))
+        }} title="Toggle draw 1 / draw 3">
+          Draw: {drawCount}
+        </button>
+        <button className="btn-ghost" onClick={() => {
+          const next = !autoFoundation
+          setAutoFoundation(next)
+          localStorage.setItem(LS_AUTO, next ? '1' : '0')
+        }} title="Auto-send cards to foundations">
+          Auto: {autoFoundation ? 'On' : 'Off'}
+        </button>
+        <span className="footer-hint">Click a card to select, then click where to move{autoFoundation ? ' • Cards auto-send to foundations' : ''}</span>
       </div>
 
       <PassportBook open={passportOpen} onClose={() => setPassportOpen(false)} stamps={stamps} miles={miles} />
