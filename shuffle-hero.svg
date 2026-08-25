@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" role="img" aria-label="Passport Solitaire — cards shuffling">
+  <defs>
+    <!-- Tokyo – waves -->
+    <pattern id="tokyo" width="14" height="14" patternUnits="userSpaceOnUse">
+      <rect width="14" height="14" fill="#fce7e7"/>
+      <path d="M0 7 Q3.5 3 7 7 T14 7" fill="none" stroke="#dc2626" stroke-width="1.2" opacity=".7"/>
+      <path d="M0 11 Q3.5 7 7 11 T14 11" fill="none" stroke="#dc2626" stroke-width="1.2" opacity=".7"/>
+    </pattern>
+    <!-- Paris – grid -->
+    <pattern id="paris" width="12" height="12" patternUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="#dbeafe"/>
+      <path d="M0 0 H12 M0 0 V12" stroke="#1d4ed8" stroke-width="1" opacity=".45"/>
+    </pattern>
+    <!-- Marrakech – tiles -->
+    <pattern id="marrakech" width="16" height="16" patternUnits="userSpaceOnUse">
+      <rect width="16" height="16" fill="#fff3d6"/>
+      <circle cx="8" cy="8" r="3.5" fill="none" stroke="#db7c00" stroke-width="1" opacity=".7"/>
+      <circle cx="8" cy="8" r="1.5" fill="#db7c00" opacity=".5"/>
+    </pattern>
+    <!-- Rio – dots -->
+    <pattern id="rio" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#dcfce7"/>
+      <circle cx="5" cy="5" r="1.8" fill="#16a34a" opacity=".65"/>
+    </pattern>
+    <!-- Reykjavik – hex -->
+    <pattern id="reykjavik" width="14" height="14" patternUnits="userSpaceOnUse">
+      <rect width="14" height="14" fill="#cffafe"/>
+      <circle cx="7" cy="7" r="2.2" fill="none" stroke="#0e7490" stroke-width="1" opacity=".6"/>
+    </pattern>
+    <!-- Bangkok – stripes -->
+    <pattern id="bangkok" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="10" height="10" fill="#fae8ff"/>
+      <rect x="0" y="3" width="10" height="2.5" fill="#c026d3" opacity=".55"/>
+    </pattern>
+
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-opacity="0.18"/>
+    </filter>
+
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800&display=swap');
+    </style>
+  </defs>
+
+  <!-- warm paper bg -->
+  <rect width="1200" height="400" fill="#e8e3d6"/>
+  <rect width="1200" height="400" fill="url(#vignette)" opacity="0"/>
+  <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
+    <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#000" stop-opacity=".035"/>
+  </radialGradient>
+  <rect width="1200" height="400" fill="url(#vignette)"/>
+
+  <!-- === SHUFFLING CARDS === -->
+  <!-- card size ~110×152, scaled for banner -->
+  <g font-family="'Inter', system-ui, Segoe UI, Roboto, sans-serif">
+
+  <!-- Card 1 – Tokyo – riffles left → right -->
+  <g filter="url(#shadow)">
+    <rect x="0" y="0" width="110" height="152" rx="9" fill="#fff" stroke="#b9aca0" stroke-width="1.5"
+      transform="translate(430,124) rotate(-18)">
+      <animateTransform attributeName="transform" type="translate"
+        values="430,124; 600,124; 430,124" dur="3.2s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="-18; 18; -18" dur="3.2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="0" y="0" width="110" height="152" rx="9" fill="url(#tokyo)" stroke="#dc2626" stroke-width="1.5"
+      transform="translate(430,124) rotate(-18)">
+      <animateTransform attributeName="transform" type="translate"
+        values="430,124; 600,124; 430,124" dur="3.2s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="-18; 18; -18" dur="3.2s" repeatCount="indefinite"/>
+    </rect>
+    <text x="55" y="80" text-anchor="middle" font-size="30" opacity=".9"
+      transform="translate(430,124) rotate(-18)">
+      ⛩️
+      <animateTransform attributeName="transform" type="translate"
+        values="430,124; 600,124; 430,124" dur="3.2s" repeatCount="indefinite" additive="sum"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="-18; 18; -18" dur="3.2s" repeatCount="indefinite"/>
+    </text>
+  </g>
+
+  <!-- Card 2 – Paris – opposite riffle -->
+  <g filter="url(#shadow)">
+    <rect x="0" y="0" width="110" height="152" rx="9" fill="#fff" stroke="#b9aca0" stroke-width="1.5"
+      transform="translate(600,124) rotate(18)">
+      <animateTransform attributeName="transform" type="translate"
+        values="600,124; 430,124; 600,124" dur="3.2s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="18; -18; 18" dur="3.2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="0" y="0" width="110" height="152" rx="9" fill="url(#paris)" stroke="#1d4ed8" stroke-width="1.5"
+      transform="translate(600,124) rotate(18)">
+      <animateTransform attributeName="transform" type="translate"
+        values="600,124; 430,124; 600,124" dur="3.2s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="18; -18; 18" dur="3.2s" repeatCount="indefinite"/>
+    </rect>
+    <text x="55" y="80" text-anchor="middle" font-size="30"
+      transform="translate(600,124) rotate(18)">
+      🗼
+      <animateTransform attributeName="transform" type="translate"
+        values="600,124; 430,124; 600,124" dur="3.2s" repeatCount="indefinite" additive="sum"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="18; -18; 18" dur="3.2s" repeatCount="indefinite"/>
+    </text>
+  </g>
+
+  <!-- Card 3 – Marrakech – center, flips face up mid-shuffle -->
+  <g filter="url(#shadow)" opacity="0.95">
+    <!-- back -->
+    <rect x="0" y="0" width="110" height="152" rx="9" fill="url(#marrakech)" stroke="#db7c00" stroke-width="1.5"
+      transform="translate(515,118) rotate(-4)">
+      <animateTransform attributeName="transform" type="scale"
+        values="1,1; 0,1; 0,1; 1,1" dur="3.2s" repeatCount="indefinite" additive="sum"/>
+      <animate attributeName="opacity" values="1;1;0;0;1" dur="3.2s" repeatCount="indefinite"/>
+    </rect>
+    <!-- face – shows during flip -->
+    <rect x="0" y="0" width="110" height="152" rx="9" fill="#fff" stroke="#b9aca0" stroke-width="1.5"
+      transform="translate(515,118) rotate(-4)" opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0" dur="3.2s" repeatCount="indefinite"/>
+    </rect>
+    <g font-weight="700" opacity="0" transform="translate(515,118) rotate(-4)">
+      <animate attributeName="opacity" values="0;0;1;1;0" dur="3.2s" repeatCount="indefinite"/>
+      <text x="10" y="22" font-size="15" fill="#d42a2a">A♥</text>
+      <text x="55" y="85" text-anchor="middle" font-size="36" fill="#d42a2a">♥</text>
+    </g>
+    <text x="55" y="80" text-anchor="middle" font-size="28" opacity=".9"
+      transform="translate(515,118) rotate(-4)">
+      🕌
+      <animate attributeName="opacity" values="1;1;0;0;1" dur="3.2s" repeatCount="indefinite"/>
+    </text>
+  </g>
+
+  <!-- Card 4 – Rio – sweep right -->
+  <g filter="url(#shadow)" opacity=".88">
+    <rect x="0" y="0" width="110" height="152" rx="9" fill="url(#rio)" stroke="#16a34a" stroke-width="1.5"
+      transform="translate(545,115) rotate(8)">
+      <animateTransform attributeName="transform" type="translate"
+        values="545,115; 480,115; 545,115" dur="3.6s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="8; -10; 8" dur="3.6s" repeatCount="indefinite"/>
+    </rect>
+    <text x="55" y="80" text-anchor="middle" font-size="28"
+      transform="translate(545,115) rotate(8)">
+      🏖️
+      <animateTransform attributeName="transform" type="translate"
+        values="545,115; 480,115; 545,115" dur="3.6s" repeatCount="indefinite" additive="sum"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="8; -10; 8" dur="3.6s" repeatCount="indefinite"/>
+    </text>
+  </g>
+
+  <!-- Card 5 – Reykjavik – sweep left -->
+  <g filter="url(#shadow)" opacity=".82">
+    <rect x="0" y="0" width="110" height="152" rx="9" fill="url(#reykjavik)" stroke="#0e7490" stroke-width="1.5"
+      transform="translate(485,115) rotate(-8)">
+      <animateTransform attributeName="transform" type="translate"
+        values="485,115; 555,115; 485,115" dur="3.6s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="-8; 10; -8" dur="3.6s" repeatCount="indefinite"/>
+    </rect>
+    <text x="55" y="80" text-anchor="middle" font-size="28"
+      transform="translate(485,115) rotate(-8)">
+      🏔️
+      <animateTransform attributeName="transform" type="translate"
+        values="485,115; 555,115; 485,115" dur="3.6s" repeatCount="indefinite" additive="sum"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="-8; 10; -8" dur="3.6s" repeatCount="indefinite"/>
+    </text>
+  </g>
+
+  <!-- Card 6 – Bangkok – top, gentle float -->
+  <g filter="url(#shadow)" opacity=".78">
+    <rect x="0" y="0" width="110" height="152" rx="9" fill="url(#bangkok)" stroke="#c026d3" stroke-width="1.5"
+      transform="translate(515,108) rotate(2)">
+      <animateTransform attributeName="transform" type="translate"
+        values="515,108; 515,102; 515,108" dur="2.4s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="2; -2; 2" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+    <text x="55" y="80" text-anchor="middle" font-size="28"
+      transform="translate(515,108) rotate(2)">
+      🛕
+      <animateTransform attributeName="transform" type="translate"
+        values="515,108; 515,102; 515,108" dur="2.4s" repeatCount="indefinite" additive="sum"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum"
+        values="2; -2; 2" dur="2.4s" repeatCount="indefinite"/>
+    </text>
+  </g>
+
+  <!-- Title overlay -->
+  <text x="600" y="62" text-anchor="middle" font-weight="800" font-size="36" fill="#1a1a1a" letter-spacing="-0.5">🛂 Passport Solitaire</text>
+  <text x="600" y="88" text-anchor="middle" font-weight="600" font-size="14" fill="#777">Travel-themed Klondike — win hands, collect stamps, unlock the world</text>
+
+  <!-- bottom tag -->
+  <text x="600" y="340" text-anchor="middle" font-weight="600" font-size="12" fill="#999">Tokyo ⛩️  ·  Paris 🗼  ·  Marrakech 🕌  ·  Rio 🏖️  ·  Reykjavik 🏔️  ·  Bangkok 🛕</text>
+
+  </g>
+</svg>
