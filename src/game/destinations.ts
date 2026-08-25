@@ -5,7 +5,7 @@ export const DESTINATIONS: Destination[] = [
     id: 'tokyo',
     city: 'Tokyo',
     country: 'Japan',
-    emoji: '🗼',
+    emoji: '⛩️',
     primary: '#dc2626',
     secondary: '#fce7e7',
     accent: '#1e1b4b',
@@ -13,6 +13,7 @@ export const DESTINATIONS: Destination[] = [
     milesRequired: 0,
     unlocked: true,
     stampsEarned: 0,
+    bg: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1920&q=80',
   },
   {
     id: 'paris',
@@ -26,6 +27,7 @@ export const DESTINATIONS: Destination[] = [
     milesRequired: 0,
     unlocked: true,
     stampsEarned: 0,
+    bg: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1920&q=80',
   },
   {
     id: 'marrakech',
@@ -39,6 +41,7 @@ export const DESTINATIONS: Destination[] = [
     milesRequired: 800,
     unlocked: false,
     stampsEarned: 0,
+    bg: 'https://images.unsplash.com/photo-1539020140153-e479b8c22e70?w=1920&q=80',
   },
   {
     id: 'rio',
@@ -52,6 +55,7 @@ export const DESTINATIONS: Destination[] = [
     milesRequired: 1500,
     unlocked: false,
     stampsEarned: 0,
+    bg: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=1920&q=80',
   },
   {
     id: 'reykjavik',
@@ -65,6 +69,7 @@ export const DESTINATIONS: Destination[] = [
     milesRequired: 2500,
     unlocked: false,
     stampsEarned: 0,
+    bg: 'https://images.unsplash.com/photo-1504893524553-b855bcefd0e4?w=1920&q=80',
   },
   {
     id: 'bangkok',
@@ -78,5 +83,6 @@ export const DESTINATIONS: Destination[] = [
     milesRequired: 3800,
     unlocked: false,
     stampsEarned: 0,
+    bg: 'https://images.unsplash.com/photo-1563492067-1c5e88b423a7?w=1920&q=80',
   },
 ]
