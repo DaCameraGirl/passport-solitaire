@@ -14,7 +14,9 @@
 
 ---
 
-> 🎬 Animated shuffle hero coming soon — cards fanning with destination-themed backs (Tokyo, Paris, Marrakech…)
+<p align="center">
+  <img src="./shuffle-hero.svg" alt="Passport Solitaire — shuffling cards" width="100%" />
+</p>
 
 Each win earns a passport stamp and 250 flight miles toward unlocking new destinations. Six cities, six unique deck skins — Tokyo, Paris, Marrakech, Rio, Reykjavik, Bangkok.
 
