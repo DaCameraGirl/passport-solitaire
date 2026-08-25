@@ -50,7 +50,7 @@ body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-se
 .count-badge { position: absolute; bottom: -6px; right: -4px; background: #333; color: #fff; font-size: 10px; border-radius: 99px; padding: 1px 5px; font-weight: 700; }
 
 /* tableau */
-.tableau { display: flex; gap: 10px; justify-content: center; min-height: 360px; flex-wrap: nowrap; overflow-x: auto; }
+.tableau { display: flex; gap: 10px; justify-content: center; min-height: 360px; flex-wrap: nowrap; overflow-x: auto; align-items: flex-start; max-height: calc(100vh - 260px); overflow-y: auto; padding-bottom: 12px; scrollbar-width: thin; }
 .tableau-pile { width: var(--card-w); min-height: 160px; }
 
 /* cards */
@@ -58,10 +58,10 @@ body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-se
   width: var(--card-w); height: var(--card-h);
   border-radius: 7px; position: relative; user-select: none;
 }
-.card-slot { border: 2px dashed #cbbda4; background: #f3eee3; display: flex; align-items: center; justify-content: center; color: #c2b49a; font-size: 20px; cursor: pointer; }
+.card-slot { border: 2px dashed #cbbda4; background: rgba(243,238,227,0.88); display: flex; align-items: center; justify-content: center; color: #c2b49a; font-size: 20px; cursor: pointer; }
 
 .card {
-  background: #fff; border: 1.5px solid #b9aca0; box-shadow: 0 1px 3px rgba(0,0,0,.1);
+  background: #fff; border: 1.5px solid #b9aca0; box-shadow: 0 1px 3px rgba(0,0,0,.15);
   cursor: pointer; transition: transform .08s;
 }
 .card:hover { transform: translateY(-2px); }
@@ -93,7 +93,7 @@ body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-se
 .pattern-hex { background-color: var(--s); background-image: radial-gradient(circle at 6px 6px, var(--p) 2px, transparent 2.5px); background-size: 12px 12px; }
 
 /* footer */
-.footer-bar { display: flex; align-items: center; gap: 18px; margin-top: 18px; }
+.footer-bar { display: flex; align-items: center; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
 .btn-ghost { background: #fff; border: 1.5px solid #ccc5b8; border-radius: 7px; padding: 6px 14px; cursor: pointer; font-weight: 600; }
 .btn-ghost:hover { background: #f8f4eb; }
 .footer-hint { font-size: 12px; color: #887; }
@@ -145,6 +145,7 @@ body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-se
   .card-corner { font-size: 10px; }
   .card-center { font-size: 18px; }
   .top-row { gap: 8px; }
-  .tableau { gap: 4px; }
+  .tableau { gap: 4px; max-height: calc(100vh - 220px); }
   .boarding-pass { flex-wrap: wrap; gap: 4px; }
+  .footer-hint { display: none; }
 }
