@@ -14,20 +14,21 @@ function formatTime(ms: number) {
   return `${mm}:${ss}`
 }
 
-function CardView({ card, dest, onClick, selected }: {
+function CardView({ card, dest, onClick, onDoubleClick, selected }: {
   card: Card | null
   dest: Destination
-  onClick?: () => void
+  onClick?: (e?: React.MouseEvent) => void
+  onDoubleClick?: (e?: React.MouseEvent) => void
   selected?: boolean
 }) {
-  if (!card) return <div className="card-slot" onClick={onClick} />
+  if (!card) return <div className="card-slot" onClick={onClick as any} onDoubleClick={onDoubleClick as any} />
   if (!card.faceUp) {
-    return <div className={`card back pattern-${dest.pattern}`} style={{'--p': dest.primary, '--s': dest.secondary} as any} onClick={onClick}>
+    return <div className={`card back pattern-${dest.pattern}`} style={{'--p': dest.primary, '--s': dest.secondary} as any} onClick={onClick as any} onDoubleClick={onDoubleClick as any}>
       <span className="back-emoji">{dest.emoji}</span>
     </div>
   }
   const color = cardColor(card.suit)
-  return <div className={`card ${color} ${selected ? 'selected' : ''}`} onClick={onClick}>
+  return <div className={`card ${color} ${selected ? 'selected' : ''}`} onClick={onClick as any} onDoubleClick={onDoubleClick as any}>
     <div className="card-corner">
       <b>{card.rank}</b>
       <span>{SUIT_SYM[card.suit]}</span>
@@ -195,6 +196,43 @@ export default function App() {
     if (autoFoundation) autoFoundationFlip(s)
     flipExposed(s)
     return s
+  }
+
+  // try to send a tableau top card directly to its foundation
+  // returns true if a move was made
+  function trySendTableauToFoundation(p: number, idx: number): boolean {
+    const pile = state.tableau[p]
+    const card = pile[idx]
+    if (!card?.faceUp) return false
+    // only the top card of a tableau pile can go to foundation
+    if (idx !== pile.length - 1) return false
+    if (!canStackOnFoundation(card, state.foundations[card.suit])) return false
+    pushHistory(state)
+    const ns: GameState = structuredClone(state)
+    const c = ns.tableau[p].pop()!
+    ns.foundations[c.suit].push(c)
+    ns.moves++
+    const final = finalizeMove(ns)
+    setState(final)
+    setSelected(null)
+    checkWin(final)
+    return true
+  }
+
+  function trySendWasteToFoundation(): boolean {
+    if (state.waste.length === 0) return false
+    const card = state.waste[state.waste.length - 1]
+    if (!canStackOnFoundation(card, state.foundations[card.suit])) return false
+    pushHistory(state)
+    const ns = structuredClone(state)
+    const c = ns.waste.pop()!
+    ns.foundations[c.suit].push(c)
+    ns.moves++
+    const final = finalizeMove(ns)
+    setState(final)
+    setSelected(null)
+    checkWin(final)
+    return true
   }
 
   function clickTableau(p: number, idx: number) {
@@ -413,13 +451,13 @@ export default function App() {
             {state.stock.length ? <div className={`card back pattern-${dest.pattern}`} style={{'--p': dest.primary, '--s': dest.secondary} as any}><span className="back-emoji">{dest.emoji}</span></div> : <div className="card-slot">↻</div>}
             <span className="count-badge">{state.stock.length}</span>
           </div>
-          <div className="waste-area" onClick={clickWaste} style={drawCount === 3 ? { minWidth: 160, position: 'relative' } : undefined}>
+          <div className="waste-area" onClick={clickWaste} onDoubleClick={(e) => { e.stopPropagation(); trySendWasteToFoundation() }} style={drawCount === 3 ? { minWidth: 160, position: 'relative' } : undefined}>
             {state.waste.length === 0 ? <div className="card-slot" /> : drawCount === 1 ? (
-              <CardView card={state.waste[state.waste.length-1]} dest={dest} selected={selected?.source === 'waste'} />
+              <CardView card={state.waste[state.waste.length-1]} dest={dest} selected={selected?.source === 'waste'} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); trySendWasteToFoundation() }} />
             ) : (
               state.waste.slice(Math.max(0, state.waste.length - 3)).map((card, i, arr) => (
                 <div key={card.id} style={{ position: 'absolute', left: i * 28, zIndex: i, pointerEvents: i === arr.length - 1 ? 'auto' : 'none' }}>
-                  <CardView card={card} dest={dest} selected={selected?.source === 'waste' && i === arr.length - 1} />
+                  <CardView card={card} dest={dest} selected={selected?.source === 'waste' && i === arr.length - 1} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); if (i === arr.length - 1) trySendWasteToFoundation() }} />
                 </div>
               ))
             )}
@@ -447,8 +485,8 @@ export default function App() {
             {pile.length === 0
               ? <div className="card-slot" onClick={() => clickTableau(p, 0)} />
               : pile.map((card, i) => (
-                <div key={card.id} style={{ marginTop: i === 0 ? 0 : card.faceUp ? -gapUp : -gapDown }} onClick={e => { e.stopPropagation(); clickTableau(p, i) }}>
-                  <CardView card={card} dest={dest} selected={selected?.source === 'tableau' && selected.pile === p && selected.idx <= i} />
+                <div key={card.id} style={{ marginTop: i === 0 ? 0 : card.faceUp ? -gapUp : -gapDown }} onClick={e => { e.stopPropagation(); clickTableau(p, i) }} onDoubleClick={e => { e.stopPropagation(); trySendTableauToFoundation(p, i) }}>
+                  <CardView card={card} dest={dest} selected={selected?.source === 'tableau' && selected.pile === p && selected.idx <= i} onDoubleClick={() => trySendTableauToFoundation(p, i)} />
                 </div>
               ))
             }
