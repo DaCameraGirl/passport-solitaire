@@ -14,12 +14,15 @@ function formatTime(ms: number) {
   return `${mm}:${ss}`
 }
 
-function CardView({ card, dest, onClick, onDoubleClick, selected }: {
+function CardView({ card, dest, onClick, onDoubleClick, selected, draggable, onDragStart, onDragEnd }: {
   card: Card | null
   dest: Destination
   onClick?: (e?: React.MouseEvent) => void
   onDoubleClick?: (e?: React.MouseEvent) => void
   selected?: boolean
+  draggable?: boolean
+  onDragStart?: (e: React.DragEvent) => void
+  onDragEnd?: (e: React.DragEvent) => void
 }) {
   if (!card) return <div className="card-slot" onClick={onClick as any} onDoubleClick={onDoubleClick as any} />
   if (!card.faceUp) {
@@ -28,7 +31,7 @@ function CardView({ card, dest, onClick, onDoubleClick, selected }: {
     </div>
   }
   const color = cardColor(card.suit)
-  return <div className={`card ${color} ${selected ? 'selected' : ''}`} onClick={onClick as any} onDoubleClick={onDoubleClick as any}>
+  return <div className={`card ${color} ${selected ? 'selected' : ''}`} onClick={onClick as any} onDoubleClick={onDoubleClick as any} draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}>
     <div className="card-corner">
       <b>{card.rank}</b>
       <span>{SUIT_SYM[card.suit]}</span>
@@ -235,106 +238,123 @@ export default function App() {
     return true
   }
 
-  function clickTableau(p: number, idx: number) {
+  // --- drag helpers ---
+  function canDragTableauCard(p: number, idx: number): boolean {
     const pile = state.tableau[p]
     const card = pile[idx]
-
-    // Try to drop selected cards here first (handles empty piles)
-    if (selected) {
-      if (selected.source === 'waste') {
-        const wasteCard = state.waste[state.waste.length - 1]
-        if (!wasteCard) { setSelected(null); return }
-        const targetTop = pile[pile.length - 1] || null
-        if (canStackOnTableau(wasteCard, targetTop)) {
-          pushHistory(state)
-          const ns: GameState = structuredClone(state)
-          const c = ns.waste.pop()!
-          ns.tableau[p].push(c)
-          ns.moves++
-          const final = finalizeMove(ns)
-          setState(final)
-          setSelected(null)
-          checkWin(final)
-          return
-        }
-        setSelected(null)
-        return
-      }
-
-      // selected.source === 'tableau'
-      // clicking the selected card again = deselect
-      if (selected.pile === p && selected.idx === idx) {
-        setSelected(null)
-        return
-      }
-      const srcPile = state.tableau[selected.pile]
-      const moving = srcPile.slice(selected.idx)
-      if (moving.length) {
-        const targetTop = pile[pile.length - 1] || null
-        if (canStackOnTableau(moving[0], targetTop)) {
-          pushHistory(state)
-          const ns: GameState = structuredClone(state)
-          const src = ns.tableau[selected.pile]
-          const dst = ns.tableau[p]
-          const block = src.splice(selected.idx)
-          dst.push(...block)
-          ns.moves++
-          const final = finalizeMove(ns)
-          setState(final)
-          setSelected(null)
-          checkWin(final)
-          return
-        }
-      }
-      setSelected(null)
-      return
-    }
-
-    // No selection active – trying to select a card
-    if (!card?.faceUp) return
-
-    // Validate this is a movable sequence
+    if (!card?.faceUp) return false
     for (let i = idx; i < pile.length - 1; i++) {
       const a = pile[i], b = pile[i + 1]
-      if (cardColor(a.suit) === cardColor(b.suit) || RANK_VALUE[a.rank] !== RANK_VALUE[b.rank] + 1) return
+      if (cardColor(a.suit) === cardColor(b.suit) || RANK_VALUE[a.rank] !== RANK_VALUE[b.rank] + 1) return false
     }
-    setSelected({ source: 'tableau', pile: p, idx })
+    return true
   }
 
-  function clickFoundation(suit: Suit) {
-    if (!selected) return
-
+  function moveSelectedToTableau(p: number): boolean {
+    if (!selected) return false
+    const pile = state.tableau[p]
     if (selected.source === 'waste') {
       const wasteCard = state.waste[state.waste.length - 1]
-      if (!wasteCard || wasteCard.suit !== suit) { setSelected(null); return }
-      if (!canStackOnFoundation(wasteCard, state.foundations[suit])) { setSelected(null); return }
+      if (!wasteCard) { setSelected(null); return false }
+      const targetTop = pile[pile.length - 1] || null
+      if (!canStackOnTableau(wasteCard, targetTop)) { setSelected(null); return false }
+      pushHistory(state)
+      const ns: GameState = structuredClone(state)
+      const c = ns.waste.pop()!
+      ns.tableau[p].push(c)
+      ns.moves++
+      const final = finalizeMove(ns)
+      setState(final); setSelected(null); checkWin(final)
+      return true
+    } else {
+      // tableau -> tableau
+      if (selected.pile === p) { setSelected(null); return false }
+      const srcPile = state.tableau[selected.pile]
+      const moving = srcPile.slice(selected.idx)
+      if (!moving.length) { setSelected(null); return false }
+      const targetTop = pile[pile.length - 1] || null
+      if (!canStackOnTableau(moving[0], targetTop)) { setSelected(null); return false }
+      pushHistory(state)
+      const ns: GameState = structuredClone(state)
+      const src = ns.tableau[selected.pile]
+      const dst = ns.tableau[p]
+      const block = src.splice(selected.idx)
+      dst.push(...block)
+      ns.moves++
+      const final = finalizeMove(ns)
+      setState(final); setSelected(null); checkWin(final)
+      return true
+    }
+  }
+
+  function moveSelectedToFoundation(suit: Suit): boolean {
+    if (!selected) return false
+    if (selected.source === 'waste') {
+      const wasteCard = state.waste[state.waste.length - 1]
+      if (!wasteCard || wasteCard.suit !== suit) { setSelected(null); return false }
+      if (!canStackOnFoundation(wasteCard, state.foundations[suit])) { setSelected(null); return false }
       pushHistory(state)
       const ns: GameState = structuredClone(state)
       const c = ns.waste.pop()!
       ns.foundations[suit].push(c)
       ns.moves++
       const final = finalizeMove(ns)
-      setState(final)
-      setSelected(null)
-      checkWin(final)
+      setState(final); setSelected(null); checkWin(final)
+      return true
+    } else {
+      const srcPile = state.tableau[selected.pile]
+      const moving = srcPile.slice(selected.idx)
+      if (moving.length !== 1) { setSelected(null); return false }
+      const card = moving[0]
+      if (card.suit !== suit) { setSelected(null); return false }
+      if (!canStackOnFoundation(card, state.foundations[suit])) { setSelected(null); return false }
+      pushHistory(state)
+      const ns: GameState = structuredClone(state)
+      ns.tableau[selected.pile].pop()!
+      ns.foundations[suit].push(card)
+      ns.moves++
+      const final = finalizeMove(ns)
+      setState(final); setSelected(null); checkWin(final)
+      return true
+    }
+  }
+
+  function clickTableau(p: number, idx: number) {
+    const pile = state.tableau[p]
+    const card = pile[idx]
+    // if something is selected, try to move it here
+    if (selected) {
+      const moved = moveSelectedToTableau(p)
+      if (!moved) setSelected(null)
       return
     }
-
-    // tableau -> foundation
-    const srcPile = state.tableau[selected.pile]
-    const moving = srcPile.slice(selected.idx)
-    if (moving.length !== 1) { setSelected(null); return }
-    const card = moving[0]
-    if (card.suit !== suit) { setSelected(null); return }
-    if (!canStackOnFoundation(card, state.foundations[suit])) { setSelected(null); return }
-    pushHistory(state)
-    const ns: GameState = structuredClone(state)
-    ns.tableau[selected.pile].pop()!
-    ns.foundations[suit].push(card)
-    ns.moves++
-    const final = finalizeMove(ns)
-    setState(final); setSelected(null); checkWin(final)
+    // no selection – try to select this card
+    if (!canDragTableauCard(p, idx)) return
+    setSelected({ source: 'tableau', pile: p, idx })
   }
+
+  function clickFoundation(suit: Suit) {
+    if (!selected) return
+    const moved = moveSelectedToFoundation(suit)
+    if (!moved) setSelected(null)
+  }
+
+  // drag handlers
+  function handleTableauDragStart(e: React.DragEvent, p: number, idx: number) {
+    if (!canDragTableauCard(p, idx)) { e.preventDefault(); return }
+    setSelected({ source: 'tableau', pile: p, idx })
+    e.dataTransfer.effectAllowed = 'move'
+    try { e.dataTransfer.setData('text/plain', `tableau:${p}:${idx}`) } catch {}
+  }
+  function handleWasteDragStart(e: React.DragEvent) {
+    if (state.waste.length === 0) { e.preventDefault(); return }
+    setSelected({ source: 'waste' })
+    e.dataTransfer.effectAllowed = 'move'
+    try { e.dataTransfer.setData('text/plain', 'waste') } catch {}
+  }
+  function handleDragOver(e: React.DragEvent) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }
+  function handleTableauDrop(e: React.DragEvent, p: number) { e.preventDefault(); e.stopPropagation(); moveSelectedToTableau(p) }
+  function handleFoundationDrop(e: React.DragEvent, suit: Suit) { e.preventDefault(); e.stopPropagation(); moveSelectedToFoundation(suit) }
 
   function drawStock() {
     if (state.stock.length === 0) {
@@ -453,11 +473,11 @@ export default function App() {
           </div>
           <div className="waste-area" onClick={clickWaste} onDoubleClick={(e) => { e.stopPropagation(); trySendWasteToFoundation() }} style={drawCount === 3 ? { minWidth: 160, position: 'relative' } : undefined}>
             {state.waste.length === 0 ? <div className="card-slot" /> : drawCount === 1 ? (
-              <CardView card={state.waste[state.waste.length-1]} dest={dest} selected={selected?.source === 'waste'} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); trySendWasteToFoundation() }} />
+              <CardView card={state.waste[state.waste.length-1]} dest={dest} selected={selected?.source === 'waste'} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); trySendWasteToFoundation() }} draggable={true} onDragStart={handleWasteDragStart} />
             ) : (
               state.waste.slice(Math.max(0, state.waste.length - 3)).map((card, i, arr) => (
                 <div key={card.id} style={{ position: 'absolute', left: i * 28, zIndex: i, pointerEvents: i === arr.length - 1 ? 'auto' : 'none' }}>
-                  <CardView card={card} dest={dest} selected={selected?.source === 'waste' && i === arr.length - 1} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); if (i === arr.length - 1) trySendWasteToFoundation() }} />
+                  <CardView card={card} dest={dest} selected={selected?.source === 'waste' && i === arr.length - 1} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); if (i === arr.length - 1) trySendWasteToFoundation() }} draggable={i === arr.length - 1} onDragStart={i === arr.length - 1 ? handleWasteDragStart : undefined} />
                 </div>
               ))
             )}
@@ -467,7 +487,7 @@ export default function App() {
           {(Object.keys(state.foundations) as Suit[]).map(s => {
             const pile = state.foundations[s]
             const top = pile[pile.length - 1] || null
-            return <div key={s} className="foundation-slot" onClick={() => clickFoundation(s)}>
+            return <div key={s} className="foundation-slot" onClick={() => clickFoundation(s)} onDragOver={handleDragOver} onDrop={e => handleFoundationDrop(e, s)}>
               {top ? <CardView card={top} dest={dest} /> : <div className="foundation-empty">{SUIT_SYM[s]}</div>}
             </div>
           })}
@@ -481,12 +501,12 @@ export default function App() {
           const gapUp = n > 20 ? 8 : n > 16 ? 10 : n > 12 ? 13 : n > 8 ? 16 : 20
           const gapDown = n > 20 ? 14 : n > 16 ? 18 : n > 12 ? 24 : n > 8 ? 32 : 44
           return (
-          <div key={p} className="tableau-pile" onClick={() => { if (pile.length === 0 && selected) clickTableau(p, 0) }}>
+          <div key={p} className="tableau-pile" onClick={() => { if (pile.length === 0 && selected) clickTableau(p, 0) }} onDragOver={handleDragOver} onDrop={e => handleTableauDrop(e, p)}>
             {pile.length === 0
-              ? <div className="card-slot" onClick={() => clickTableau(p, 0)} />
+              ? <div className="card-slot" onClick={() => clickTableau(p, 0)} onDragOver={handleDragOver} onDrop={e => handleTableauDrop(e, p)} />
               : pile.map((card, i) => (
                 <div key={card.id} style={{ marginTop: i === 0 ? 0 : card.faceUp ? -gapUp : -gapDown }} onClick={e => { e.stopPropagation(); clickTableau(p, i) }} onDoubleClick={e => { e.stopPropagation(); trySendTableauToFoundation(p, i) }}>
-                  <CardView card={card} dest={dest} selected={selected?.source === 'tableau' && selected.pile === p && selected.idx <= i} onDoubleClick={() => trySendTableauToFoundation(p, i)} />
+                  <CardView card={card} dest={dest} selected={selected?.source === 'tableau' && selected.pile === p && selected.idx <= i} onDoubleClick={() => trySendTableauToFoundation(p, i)} draggable={canDragTableauCard(p, i)} onDragStart={e => handleTableauDragStart(e, p, i)} />
                 </div>
               ))
             }
