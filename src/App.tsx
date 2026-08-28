@@ -128,6 +128,8 @@ export default function App() {
   const gameStart = useRef(Date.now())
   const [elapsedMs, setElapsedMs] = useState(0)
 
+  const dragJustEnded = useRef(false)
+
   useEffect(() => {
     setState(dealNewGame(destId))
     setSelected(null)
@@ -320,6 +322,7 @@ export default function App() {
   }
 
   function clickTableau(p: number, idx: number) {
+    if (dragJustEnded.current) { dragJustEnded.current = false; return }
     const pile = state.tableau[p]
     const card = pile[idx]
     // if something is selected, try to move it here
@@ -341,16 +344,23 @@ export default function App() {
 
   // drag handlers
   function handleTableauDragStart(e: React.DragEvent, p: number, idx: number) {
+    e.stopPropagation()
     if (!canDragTableauCard(p, idx)) { e.preventDefault(); return }
     setSelected({ source: 'tableau', pile: p, idx })
     e.dataTransfer.effectAllowed = 'move'
+    // Firefox requires setData for drag to work
     try { e.dataTransfer.setData('text/plain', `tableau:${p}:${idx}`) } catch {}
   }
   function handleWasteDragStart(e: React.DragEvent) {
+    e.stopPropagation()
     if (state.waste.length === 0) { e.preventDefault(); return }
     setSelected({ source: 'waste' })
     e.dataTransfer.effectAllowed = 'move'
     try { e.dataTransfer.setData('text/plain', 'waste') } catch {}
+  }
+  function handleDragEnd() {
+    dragJustEnded.current = true
+    setTimeout(() => { dragJustEnded.current = false }, 0)
   }
   function handleDragOver(e: React.DragEvent) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }
   function handleTableauDrop(e: React.DragEvent, p: number) { e.preventDefault(); e.stopPropagation(); moveSelectedToTableau(p) }
@@ -377,27 +387,14 @@ export default function App() {
   }
 
   function clickWaste() {
+    if (dragJustEnded.current) { dragJustEnded.current = false; return }
     if (state.waste.length === 0) return
-    const card = state.waste[state.waste.length - 1]
-
     // if waste card is already selected, clicking again deselects
     if (selected?.source === 'waste') {
       setSelected(null)
       return
     }
-
-    // auto-send to foundation if possible
-    if (canStackOnFoundation(card, state.foundations[card.suit])) {
-      pushHistory(state)
-      const ns = structuredClone(state)
-      const c = ns.waste.pop()!
-      ns.foundations[c.suit].push(c); ns.moves++
-      const final = finalizeMove(ns)
-      setState(final); checkWin(final)
-      return
-    }
-
-    // otherwise select the waste card so it can be played to tableau
+    // select the waste card so it can be played to tableau / dragged
     setSelected({ source: 'waste' })
   }
 
@@ -471,13 +468,13 @@ export default function App() {
             {state.stock.length ? <div className={`card back pattern-${dest.pattern}`} style={{'--p': dest.primary, '--s': dest.secondary} as any}><span className="back-emoji">{dest.emoji}</span></div> : <div className="card-slot">↻</div>}
             <span className="count-badge">{state.stock.length}</span>
           </div>
-          <div className="waste-area" onClick={clickWaste} onDoubleClick={(e) => { e.stopPropagation(); trySendWasteToFoundation() }} style={drawCount === 3 ? { minWidth: 160, position: 'relative' } : undefined}>
-            {state.waste.length === 0 ? <div className="card-slot" /> : drawCount === 1 ? (
-              <CardView card={state.waste[state.waste.length-1]} dest={dest} selected={selected?.source === 'waste'} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); trySendWasteToFoundation() }} draggable={true} onDragStart={handleWasteDragStart} />
+          <div className="waste-area" onDoubleClick={(e) => { e.stopPropagation(); trySendWasteToFoundation() }} style={drawCount === 3 ? { minWidth: 160, position: 'relative' } : undefined}>
+            {state.waste.length === 0 ? <div className="card-slot" onClick={clickWaste} /> : drawCount === 1 ? (
+              <CardView card={state.waste[state.waste.length-1]} dest={dest} selected={selected?.source === 'waste'} onClick={clickWaste} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); trySendWasteToFoundation() }} draggable={true} onDragStart={handleWasteDragStart} onDragEnd={handleDragEnd} />
             ) : (
               state.waste.slice(Math.max(0, state.waste.length - 3)).map((card, i, arr) => (
                 <div key={card.id} style={{ position: 'absolute', left: i * 28, zIndex: i, pointerEvents: i === arr.length - 1 ? 'auto' : 'none' }}>
-                  <CardView card={card} dest={dest} selected={selected?.source === 'waste' && i === arr.length - 1} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); if (i === arr.length - 1) trySendWasteToFoundation() }} draggable={i === arr.length - 1} onDragStart={i === arr.length - 1 ? handleWasteDragStart : undefined} />
+                  <CardView card={card} dest={dest} selected={selected?.source === 'waste' && i === arr.length - 1} onClick={i === arr.length - 1 ? clickWaste : undefined} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); if (i === arr.length - 1) trySendWasteToFoundation() }} draggable={i === arr.length - 1} onDragStart={i === arr.length - 1 ? handleWasteDragStart : undefined} onDragEnd={i === arr.length - 1 ? handleDragEnd : undefined} />
                 </div>
               ))
             )}
@@ -505,8 +502,17 @@ export default function App() {
             {pile.length === 0
               ? <div className="card-slot" onClick={() => clickTableau(p, 0)} onDragOver={handleDragOver} onDrop={e => handleTableauDrop(e, p)} />
               : pile.map((card, i) => (
-                <div key={card.id} style={{ marginTop: i === 0 ? 0 : card.faceUp ? -gapUp : -gapDown }} onClick={e => { e.stopPropagation(); clickTableau(p, i) }} onDoubleClick={e => { e.stopPropagation(); trySendTableauToFoundation(p, i) }}>
-                  <CardView card={card} dest={dest} selected={selected?.source === 'tableau' && selected.pile === p && selected.idx <= i} onDoubleClick={() => trySendTableauToFoundation(p, i)} draggable={canDragTableauCard(p, i)} onDragStart={e => handleTableauDragStart(e, p, i)} />
+                <div key={card.id} style={{ marginTop: i === 0 ? 0 : card.faceUp ? -gapUp : -gapDown }}>
+                  <CardView
+                    card={card}
+                    dest={dest}
+                    selected={selected?.source === 'tableau' && selected.pile === p && selected.idx <= i}
+                    onClick={e => { e?.stopPropagation(); clickTableau(p, i) }}
+                    onDoubleClick={e => { e?.stopPropagation(); trySendTableauToFoundation(p, i) }}
+                    draggable={canDragTableauCard(p, i)}
+                    onDragStart={e => handleTableauDragStart(e, p, i)}
+                    onDragEnd={handleDragEnd}
+                  />
                 </div>
               ))
             }
@@ -531,7 +537,7 @@ export default function App() {
         }} title="Auto-send cards to foundations">
           Auto: {autoFoundation ? 'On' : 'Off'}
         </button>
-        <span className="footer-hint">Click a card to select, then click where to move{autoFoundation ? ' • Cards auto-send to foundations' : ''}</span>
+        <span className="footer-hint">Drag cards or click to select{autoFoundation ? ' • Cards auto-send to foundations' : ''}</span>
       </div>
 
       <PassportBook open={passportOpen} onClose={() => setPassportOpen(false)} stamps={stamps} miles={miles} />
