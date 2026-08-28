@@ -57,6 +57,7 @@ body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-se
 .card, .card-slot {
   width: var(--card-w); height: var(--card-h);
   border-radius: 7px; position: relative; user-select: none;
+  -webkit-user-drag: element;
 }
 .card-slot { border: 2px dashed #cbbda4; background: rgba(243,238,227,0.88); display: flex; align-items: center; justify-content: center; color: #c2b49a; font-size: 20px; cursor: pointer; }
 
