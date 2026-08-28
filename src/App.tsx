@@ -307,13 +307,12 @@ export default function App() {
       const srcPile = state.tableau[selected.pile]
       const moving = srcPile.slice(selected.idx)
       if (moving.length !== 1) { setSelected(null); return false }
-      const card = moving[0]
-      if (card.suit !== suit) { setSelected(null); return false }
-      if (!canStackOnFoundation(card, state.foundations[suit])) { setSelected(null); return false }
+      if (moving[0].suit !== suit) { setSelected(null); return false }
+      if (!canStackOnFoundation(moving[0], state.foundations[suit])) { setSelected(null); return false }
       pushHistory(state)
       const ns: GameState = structuredClone(state)
-      ns.tableau[selected.pile].pop()!
-      ns.foundations[suit].push(card)
+      const c = ns.tableau[selected.pile].pop()!
+      ns.foundations[suit].push(c)
       ns.moves++
       const final = finalizeMove(ns)
       setState(final); setSelected(null); checkWin(final)
@@ -321,163 +320,160 @@ export default function App() {
     }
   }
 
-  function clickTableau(p: number, idx: number) {
-    if (dragJustEnded.current) { dragJustEnded.current = false; return }
-    const pile = state.tableau[p]
-    const card = pile[idx]
-    // if something is selected, try to move it here
-    if (selected) {
-      const moved = moveSelectedToTableau(p)
-      if (!moved) setSelected(null)
-      return
-    }
-    // no selection – try to select this card
-    if (!canDragTableauCard(p, idx)) return
-    setSelected({ source: 'tableau', pile: p, idx })
+  // --- drag event handlers ---
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
   }
 
-  function clickFoundation(suit: Suit) {
-    if (!selected) return
-    const moved = moveSelectedToFoundation(suit)
-    if (!moved) setSelected(null)
-  }
-
-  // drag handlers
   function handleTableauDragStart(e: React.DragEvent, p: number, idx: number) {
     e.stopPropagation()
-    if (!canDragTableauCard(p, idx)) { e.preventDefault(); return }
     setSelected({ source: 'tableau', pile: p, idx })
     e.dataTransfer.effectAllowed = 'move'
-    // Firefox requires setData for drag to work
-    try { e.dataTransfer.setData('text/plain', `tableau:${p}:${idx}`) } catch {}
+    e.dataTransfer.setData('text/plain', `tableau:${p}:${idx}`)
   }
+
   function handleWasteDragStart(e: React.DragEvent) {
     e.stopPropagation()
-    if (state.waste.length === 0) { e.preventDefault(); return }
     setSelected({ source: 'waste' })
     e.dataTransfer.effectAllowed = 'move'
-    try { e.dataTransfer.setData('text/plain', 'waste') } catch {}
+    e.dataTransfer.setData('text/plain', 'waste')
   }
+
   function handleDragEnd() {
     dragJustEnded.current = true
     setTimeout(() => { dragJustEnded.current = false }, 0)
   }
-  function handleDragOver(e: React.DragEvent) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }
-  function handleTableauDrop(e: React.DragEvent, p: number) { e.preventDefault(); e.stopPropagation(); moveSelectedToTableau(p) }
-  function handleFoundationDrop(e: React.DragEvent, suit: Suit) { e.preventDefault(); e.stopPropagation(); moveSelectedToFoundation(suit) }
 
-  function drawStock() {
-    if (state.stock.length === 0) {
-      if (state.waste.length === 0) return
-      pushHistory(state)
-      const ns = structuredClone(state)
-      ns.stock = ns.waste.reverse().map(c => ({ ...c, faceUp: false }))
-      ns.waste = []; ns.moves++
-      setState(ns); return
+  function handleTableauDrop(e: React.DragEvent, p: number) {
+    e.preventDefault()
+    moveSelectedToTableau(p)
+  }
+
+  function handleFoundationDrop(e: React.DragEvent, suit: Suit) {
+    e.preventDefault()
+    moveSelectedToFoundation(suit)
+  }
+
+  // -- click handlers
+  function clickTableau(p: number, idx: number) {
+    if (dragJustEnded.current) { dragJustEnded.current = false; return }
+    // if we have something selected, try to move it here
+    if (selected) {
+      const moved = moveSelectedToTableau(p)
+      if (moved) return
     }
-    pushHistory(state)
-    setSelected(null)
-    const ns = structuredClone(state)
-    for (let i = 0; i < drawCount && ns.stock.length > 0; i++) {
-      const card = ns.stock.pop()!
-      card.faceUp = true; ns.waste.push(card)
+    // otherwise, select this card if it's draggable
+    if (canDragTableauCard(p, idx)) {
+      setSelected({ source: 'tableau', pile: p, idx })
     }
-    ns.moves++
-    setState(ns)
   }
 
   function clickWaste() {
     if (dragJustEnded.current) { dragJustEnded.current = false; return }
-    if (state.waste.length === 0) return
-    // if waste card is already selected, clicking again deselects
+    // if we have a tableau card selected, try to move waste card to that pile?
+    // no - waste click just selects/deselects the waste card
     if (selected?.source === 'waste') {
       setSelected(null)
-      return
+    } else {
+      if (state.waste.length > 0) {
+        setSelected({ source: 'waste' })
+      }
     }
-    // select the waste card so it can be played to tableau / dragged
-    setSelected({ source: 'waste' })
+  }
+
+  function clickFoundation(suit: Suit) {
+    if (selected) {
+      moveSelectedToFoundation(suit)
+    }
+  }
+
+  function draw() {
+    pushHistory(state)
+    const ns: GameState = structuredClone(state)
+    if (ns.stock.length === 0) {
+      ns.stock = ns.waste.reverse()
+      ns.waste = []
+    } else {
+      const n = Math.min(drawCount, ns.stock.length)
+      for (let i = 0; i < n; i++) {
+        const c = ns.stock.pop()!
+        c.faceUp = true
+        ns.waste.push(c)
+      }
+    }
+    ns.moves++
+    const final = finalizeMove(ns)
+    setState(final)
+    setSelected(null)
   }
 
   function checkWin(s: GameState) {
-    if (isWon(s) && !won) {
-      const elapsed = Date.now() - gameStart.current
-      addStamp(dest.id, elapsed)
-      addMiles(250)
-      setStamps(getStamps()); setMiles(getMiles())
-      setWon(true); setElapsedMs(elapsed)
-      setHistory([]) // clear undo after win
-      try {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-        const o = ctx.createOscillator(); const g = ctx.createGain()
-        o.connect(g); g.connect(ctx.destination)
-        o.frequency.setValueAtTime(180, ctx.currentTime)
-        o.frequency.exponentialRampToValueAtTime(70, ctx.currentTime + 0.12)
-        g.gain.setValueAtTime(0.35, ctx.currentTime)
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18)
-        o.start(); o.stop(ctx.currentTime + 0.2)
-      } catch {}
-      if (navigator.vibrate) navigator.vibrate(40)
+    if (isWon(s)) {
+      setWon(true)
+      const earnedMiles = addMiles(250)
+      addStamp(destId)
+      setMiles(earnedMiles)
+      setStamps(getStamps())
     }
   }
 
-  const destOptions = DESTINATIONS.map(d => ({ ...d, unlocked: miles >= d.milesRequired }))
-
-  // destination background
-  useEffect(() => {
-    if ((dest as any).bg) {
-      document.body.style.backgroundImage = `linear-gradient(rgba(232,227,214,0.88), rgba(232,227,214,0.88)), url(${(dest as any).bg})`
-      document.body.style.backgroundSize = 'cover'
-      document.body.style.backgroundPosition = 'center'
-      document.body.style.backgroundAttachment = 'fixed'
-    } else {
-      document.body.style.backgroundImage = ''
-    }
-    return () => { document.body.style.backgroundImage = '' }
-  }, [destId])
-
   return (
-    <div className={`wrap dest-${destId}`} style={{'--dest-primary': dest.primary, '--dest-secondary': dest.secondary, '--dest-accent': dest.accent} as any}>
-      <header className="boarding-pass">
-        <div className="bp-left">
+    <div className="wrap" style={{'--dest-primary': dest.primary, '--dest-secondary': dest.secondary, '--dest-accent': dest.accent} as any}>
+      <div className="boarding-pass">
+        <div>
           <div className="bp-brand">PASSPORT SOLITAIRE</div>
-          <div className="bp-route">{dest.city} → VICTORY</div>
+          <div className="bp-route">{dest.city} • {dest.country}</div>
         </div>
         <div className="bp-mid">
-          <span>⏱ {formatTime(elapsedMs)}</span>
-          <span>FLT {state.moves}</span>
-          <span>MI {miles.toLocaleString()}</span>
+          <span>Moves: {state.moves}</span>
+          <span>🕒 {formatTime(elapsedMs)}</span>
         </div>
-        <div className="bp-right">
-          <button className="passport-btn" onClick={() => setPassportOpen(true)}>🛂 Passport</button>
-        </div>
-      </header>
+        <button className="passport-btn" onClick={() => setPassportOpen(true)}>🛂 {miles.toLocaleString()} mi</button>
+      </div>
 
       <div className="dest-picker">
-        {destOptions.map(d => (
-          <button key={d.id} className={`dest-chip ${d.id === destId ? 'active' : ''} ${!d.unlocked ? 'locked' : ''}`}
-            onClick={() => d.unlocked && setDestId(d.id)} disabled={!d.unlocked} style={{borderColor: d.primary}}>
-            <span>{d.emoji}</span> {d.city}
-            {!d.unlocked && <small> {d.milesRequired}mi</small>}
+        {DESTINATIONS.map(d => {
+          const isUnlocked = unlocked.some(u => u.id === d.id)
+          return <button key={d.id} className={`dest-chip ${destId === d.id ? 'active' : ''} ${!isUnlocked ? 'locked' : ''}`} onClick={() => isUnlocked && setDestId(d.id)} disabled={!isUnlocked} title={isUnlocked ? '' : `${d.milesRequired.toLocaleString()} miles to unlock`}>
+            {isUnlocked ? d.emoji : '🔒'} {d.city} {destId === d.id ? '' : <small>{d.code}</small>}
           </button>
-        ))}
+        })}
       </div>
 
       <div className="top-row">
         <div className="stock-waste">
-          <div className="stock-area" onClick={drawStock}>
-            {state.stock.length ? <div className={`card back pattern-${dest.pattern}`} style={{'--p': dest.primary, '--s': dest.secondary} as any}><span className="back-emoji">{dest.emoji}</span></div> : <div className="card-slot">↻</div>}
-            <span className="count-badge">{state.stock.length}</span>
+          <div className="stock-area" onClick={draw}>
+            {state.stock.length === 0
+              ? <div className="card-slot">♻︎</div>
+              : <CardView card={null} dest={dest} onClick={draw} />
+            }
+            {state.stock.length > 0 && <span className="count-badge">{state.stock.length}</span>}
           </div>
-          <div className="waste-area" onDoubleClick={(e) => { e.stopPropagation(); trySendWasteToFoundation() }} style={drawCount === 3 ? { minWidth: 160, position: 'relative' } : undefined}>
-            {state.waste.length === 0 ? <div className="card-slot" onClick={clickWaste} /> : drawCount === 1 ? (
-              <CardView card={state.waste[state.waste.length-1]} dest={dest} selected={selected?.source === 'waste'} onClick={clickWaste} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); trySendWasteToFoundation() }} draggable={true} onDragStart={handleWasteDragStart} onDragEnd={handleDragEnd} />
-            ) : (
-              state.waste.slice(Math.max(0, state.waste.length - 3)).map((card, i, arr) => (
-                <div key={card.id} style={{ position: 'absolute', left: i * 28, zIndex: i, pointerEvents: i === arr.length - 1 ? 'auto' : 'none' }}>
-                  <CardView card={card} dest={dest} selected={selected?.source === 'waste' && i === arr.length - 1} onClick={i === arr.length - 1 ? clickWaste : undefined} onDoubleClick={(e?: any) => { e?.stopPropagation?.(); if (i === arr.length - 1) trySendWasteToFoundation() }} draggable={i === arr.length - 1} onDragStart={i === arr.length - 1 ? handleWasteDragStart : undefined} onDragEnd={i === arr.length - 1 ? handleDragEnd : undefined} />
+          <div className="waste-area" onClick={clickWaste}>
+            {state.waste.length === 0
+              ? <div className="card-slot" />
+              : (() => {
+                  const arr = drawCount === 1 ? [state.waste.length - 1] : [
+                    state.waste.length - 3,
+                    state.waste.length - 2,
+                    state.waste.length - 1,
+                  ].filter(i => i >= 0)
+                  return arr.map((i, j) => (
+                <div key={i} style={{ position: 'absolute', left: drawCount === 1 ? 0 : j * 16, top: 0, zIndex: j }}>
+                  <CardView
+                    card={state.waste[i]}
+                    dest={dest}
+                    selected={selected?.source === 'waste' && i === arr.length - 1}
+                    onClick={clickWaste}
+                    onDoubleClick={trySendWasteToFoundation}
+                    draggable={i === arr.length - 1}
+                    onDragStart={i === arr.length - 1 ? handleWasteDragStart : undefined}
+                    onDragEnd={i === arr.length - 1 ? handleDragEnd : undefined} />
                 </div>
               ))
-            )}
+            })()
+            }
           </div>
         </div>
         <div className="foundations">
